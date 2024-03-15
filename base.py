@@ -5,6 +5,17 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import mean_squared_error, mean_absolute_percentage_error
 
 
+def get_value(arr):
+    if np.ndim(arr) == 0:  # Scalar case
+        return arr.item()
+    elif np.ndim(arr) == 1 and len(arr) == 1:  # Single element array
+        return arr[0]
+    elif np.ndim(arr) == 2 and arr.shape[0] == 1 and arr.shape[1] == 1:  # Nested array with single element
+        return arr[0, 0]
+    else:
+        raise ValueError("Array shape not supported")
+        
+
 class BaseDER: 
     def __init__(self, pool_regressors=None, k=7, knn_metric='minkowski', metrics='mse', threshold=0.2): 
         self.pool_regressors = pool_regressors 
@@ -39,8 +50,8 @@ class BaseDER:
 
 
 class DER(BaseDER): 
-    def __init__(self, pool_regressors=None, k=7, knn_metric='minkowski', metrics='mse'):
-        super(DER, self).__init__(pool_regressors=pool_regressors, k=k, knn_metric=knn_metric, metrics=metrics) 
+    def __init__(self, pool_regressors=None, k=7, knn_metric='minkowski', metrics='mse', threshold=0.2):
+        super(DER, self).__init__(pool_regressors=pool_regressors, k=k, knn_metric=knn_metric, metrics=metrics, threshold=threshold) 
         
 
     def fit(self, X_dsel=None, y_dsel=None):
@@ -78,11 +89,12 @@ class DER(BaseDER):
 
         final_prediction = 0 
         for i in self.selected_models_indices: 
-            final_prediction += self.pool_regressorsp[i].predict(query) 
+            pred = get_value(self.pool_regressors[i].predict(query))  
+            final_prediction += pred
 
         final_prediction = final_prediction/len(self.selected_models_indices)
         
-        return final_prediction 
+        return final_prediction
             
 
     def predict(self, X):
