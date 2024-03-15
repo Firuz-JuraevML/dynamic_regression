@@ -2,17 +2,21 @@ import math
 import numpy as np 
 import pandas as pd 
 from sklearn.neighbors import NearestNeighbors 
-from sklearn.metrics import mean_squared_error 
+from sklearn.metrics import mean_squared_error, mean_absolute_percentage_error
 
 
 class BaseDER: 
-    def __init__(self, pool_regressors=None, k=7, knn_metric='minkowski', metrics='mse'): 
+    def __init__(self, pool_regressors=None, k=7, knn_metric='minkowski', metrics='mse', threshold=0.2): 
         self.pool_regressors = pool_regressors 
         self.k               = k 
         self.knn_metric      = knn_metric 
+        self.threshold       = threshold 
 
         if metrics == 'mse': 
             self.eval_metric = mean_squared_error 
+        
+        if metrics == 'mape': 
+            self.eval_metric = mean_absolute_percentage_error 
 
 
     def get_region_of_competence(self, query): 
@@ -44,9 +48,50 @@ class DER(BaseDER):
         self.y_dsel = y_dsel  
 
     
-    def select(self):
-        pass 
+    def select(self, competences):
+        criteria = self.threshold 
+        selected_models_indices = []  
+
+        while(len(selected_models_indices) <= 0):  
+            for i in range(len(competences)):  
+                if competences[i] <= criteria: 
+                    selected_models_indices.append(i) 
+            
+            if len(selected_models_indices) == 0: 
+                criteria = criteria + 0.05 
+            
+        
+        self.selected_models_indices = selected_models_indices   
 
 
-    def predict(self):
-        pass 
+    def predict_single_sample(self, query): 
+        # 1) define region of competence 
+        self.get_region_of_competence(query) 
+
+        # 2) estimate competence  
+        competences = self.estimate_competence() 
+
+        # 3) select models 
+        self.select(competences) 
+
+        # 4) predict 
+
+        final_prediction = 0 
+        for i in self.selected_models_indices: 
+            final_prediction += self.pool_regressorsp[i].predict(query) 
+
+        final_prediction = final_prediction/len(self.selected_models_indices)
+        
+        return final_prediction 
+            
+
+    def predict(self, X):
+        preds = []  
+
+        for i in range(X.shape[0]):
+            query = X.iloc[[i]] 
+
+            pred = self.predict_single_sample(query)
+            preds.append(pred) 
+        
+        return preds  
