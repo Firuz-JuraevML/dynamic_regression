@@ -49,6 +49,7 @@ class BaseDER:
         return competence_list 
 
 
+
 class DER(BaseDER): 
     def __init__(self, pool_regressors=None, k=7, knn_metric='minkowski', metrics='mse', threshold=0.2):
         super(DER, self).__init__(pool_regressors=pool_regressors, k=k, knn_metric=knn_metric, metrics=metrics, threshold=threshold) 
@@ -107,3 +108,55 @@ class DER(BaseDER):
             preds.append(pred) 
         
         return preds  
+
+
+
+
+class DRS(BaseDER): 
+    def __init__(self, pool_regressors=None, k=7, knn_metric='minkowski', metrics='mse', threshold=0.2):
+        super(DRS, self).__init__(pool_regressors=pool_regressors, k=k, knn_metric=knn_metric, metrics=metrics, threshold=threshold) 
+        
+
+    def fit(self, X_dsel=None, y_dsel=None):
+        self.X_dsel = X_dsel 
+        self.y_dsel = y_dsel  
+
+    
+    def select(self, competences):  
+        index_min = np.argmin(competences)  
+        
+        self.selected_models_indices = [index_min]   
+
+
+    def predict_single_sample(self, query): 
+        # 1) define region of competence 
+        self.get_region_of_competence(query) 
+
+        # 2) estimate competence  
+        competences = self.estimate_competence() 
+
+        # 3) select models 
+        self.select(competences) 
+
+        # 4) predict 
+
+        final_prediction = 0 
+        for i in self.selected_models_indices: 
+            pred = get_value(self.pool_regressors[i].predict(query))  
+            final_prediction += pred
+
+        final_prediction = final_prediction/len(self.selected_models_indices)
+        
+        return final_prediction
+            
+
+    def predict(self, X):
+        preds = []  
+
+        for i in range(X.shape[0]):
+            query = X.iloc[[i]] 
+
+            pred = self.predict_single_sample(query)
+            preds.append(pred) 
+        
+        return preds 
