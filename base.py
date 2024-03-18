@@ -87,13 +87,18 @@ class DER(BaseDER):
         self.select(competences) 
 
         # 4) predict 
+        selected_models_competence = [] 
+    
 
         final_prediction = 0 
+        weight_total = 0 
+        
         for i in self.selected_models_indices: 
             pred = get_value(self.pool_regressors[i].predict(query))  
-            final_prediction += pred
+            final_prediction += pred * competences[i] 
+            weight_total += competences[i]  
 
-        final_prediction = final_prediction/len(self.selected_models_indices)
+        final_prediction = final_prediction/weight_total
         
         return final_prediction
             
@@ -133,7 +138,8 @@ class DRS(BaseDER):
         self.get_region_of_competence(query) 
 
         # 2) estimate competence  
-        competences = self.estimate_competence() 
+        competences = self.estimate_competence()
+
 
         # 3) select models 
         self.select(competences) 
@@ -143,7 +149,7 @@ class DRS(BaseDER):
         final_prediction = 0 
         for i in self.selected_models_indices: 
             pred = get_value(self.pool_regressors[i].predict(query))  
-            final_prediction += pred
+            final_prediction += pred  
 
         final_prediction = final_prediction/len(self.selected_models_indices)
         
